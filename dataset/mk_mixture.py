@@ -97,12 +97,3 @@ if __name__ == '__main__':
     mk_mix_dataset(args.test_database, "test", args.output_dir)
 
 
-
-
-
-
-
-
-
-
-
