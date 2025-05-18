@@ -23,6 +23,7 @@ class DeepClustering(nn.Module):
             num_layers=2,
             embedding_size=40,
             bidirectional=True,
+            dropout=0.3
     ):
         super(DeepClustering, self).__init__()
         self.embedding_size = embedding_size
@@ -34,6 +35,8 @@ class DeepClustering(nn.Module):
             batch_first=True,
             bidirectional=bidirectional
         )
+
+        self.dropout = nn.Dropout(dropout)
 
         self.fc = nn.Linear(
             in_features=2 * hidden_size if bidirectional else hidden_size,
@@ -49,9 +52,12 @@ class DeepClustering(nn.Module):
         x_spec = stft_encoder(x)
         x_spec = x_spec.abs().permute(0, 2, 1)  # (B, T, F)
         x_spec, _ = self.lstm(x_spec)   # (B, T, 2 * H)
+        x_spec = self.dropout(x_spec)
         x_spec = self.fc(x_spec)   # (B, T, F * E)
         x_spec = rearrange(x_spec, 'b t (f e) -> b (t f) e', e=self.embedding_size)  # (B, T * F, E)
         x_spec = self.act(x_spec)  # (B, T * F, E)
+        x_spec_norm = torch.norm(x_spec, dim=-1, keepdim=True)  # (B, T * F, 1)
+        x_spec = x_spec / x_spec_norm   # (B, T * F, E)  normalization
 
         return x_spec
 
@@ -62,3 +68,5 @@ if __name__ == '__main__':
     flops, params = get_model_complexity_info(model, (16000,), as_strings=True,
                                               print_per_layer_stat=True, verbose=True)
     print(flops, params)
+
+
